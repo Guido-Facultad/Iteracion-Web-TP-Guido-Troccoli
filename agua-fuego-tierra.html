@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Agua, Fuego y Tierra - Grandes Videojuegos</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <h1 class="titulo-principal">Agua, Fuego y Tierra</h1>
+    
+    <nav class="menu-horizontal">
+        <ul>
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="videojuegos.html">Videojuegos</a></li>
+            <li><a href="recomendaciones.html">Recomendaciones</a></li>
+            <li><a href="contacto.html">Contacto</a></li>
+        </ul>
+    </nav>
+    
+    <main class="contenido-principal">
+        <p class="descripcion">
+            Una versión similar pero con diferente tematica del clásico juego Piedra, Papel o Tijera, reinventado con los elementos naturales: 
+            Agua, Fuego y Tierra. Juega contra la computadora en este juego y descubre cual es el resultado de tu elección.
+        </p>
+        
+        <div class="seccion">
+            <h2>¿Cómo se Juega?</h2>
+            <p>Las reglas son simples, elige un elemento y la computadora te hará una elección aleatoria, recuerda que:</p>
+            <ul>
+                <li>El Agua apaga el Fuego</li>
+                <li>El Fuego quema la Tierra</li>
+                <li>La Tierra absorbe el Agua</li>
+            </ul>
+        </div>
+
+        <div class="seccion">
+            <h2>Los Personajes</h2>
+            <div class="personajes-container">
+                <div class="personaje opcion-jugador" data-opcion="agua">
+                    <img src="img/gomamon.jpg" alt="Gomamon - Agua">
+                    <h3>Gomamon</h3>
+                    <p>Representa el elemento Agua</p>
+                </div>
+                <div class="personaje opcion-jugador" data-opcion="fuego">
+                    <img src="img/coronamon.jpg" alt="Coronamon - Fuego">
+                    <h3>Coronamon</h3>
+                    <p>Representa el elemento Fuego</p>
+                </div>
+                <div class="personaje opcion-jugador" data-opcion="tierra">
+                    <img src="img/armadillomon.png" alt="Armadillomon - Tierra">
+                    <h3>Armadillomon</h3>
+                    <p>Representa el elemento Tierra</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="seccion">
+            <h2>Resultados</h2>
+            <div class="resultados-container">
+                <div class="contador">
+                    <h3>Victorias del Jugador</h3>
+                    <p id="victorias-jugador">0</p>
+                </div>
+                <div class="contador">
+                    <h3>Victorias de la Computadora</h3>
+                    <p id="victorias-computadora">0</p>
+                </div>
+                <div class="contador">
+                    <h3>Empates</h3>
+                    <p id="empates">0</p>
+                </div>
+            </div>
+            <div id="resultado" class="resultado-texto"></div>
+            <img id="imagen-ganador" class="imagen-ganador" style="display: none;" alt="Ganador">
+        </div>
+
+        <div class="seccion">
+            <h2>Controles</h2>
+            <div class="controles-container">
+                <button id="reiniciar" class="boton">Reiniciar Juego</button>
+                <button id="finalizar" class="boton">Finalizar Partida</button>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p><i class="fas fa-map-marker-alt"></i> Av. Corrientes 1234, Ciudad Autónoma de Buenos Aires, Argentina</p>
+        <p><i class="fas fa-building"></i> Edificio Central, Piso 5</p>
+        <p><i class="fas fa-copyright"></i> 2024 Grandes Videojuegos. Todos los derechos reservados.</p>
+    </footer>
+
+    <script src="game.js"></script>
+</body>
+</html> 

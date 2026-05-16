@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Juego de Memoria - Grandes Videojuegos</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+</head>
+<body>
+    <h1 class="titulo-principal">Juego de Memoria</h1>
+    
+    <nav class="menu-horizontal">
+        <ul>
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="videojuegos.html">Videojuegos</a></li>
+            <li><a href="recomendaciones.html">Recomendaciones</a></li>
+            <li><a href="contacto.html">Contacto</a></li>
+        </ul>
+    </nav>
+    
+    <main class="contenido-principal">
+        <p class="descripcion">
+            Un clásico juego de memoria donde deberás encontrar las parejas de cartas iguales. 
+            Pon a prueba tu memoria y concentración en este entretenido juego.
+        </p>
+        
+        <div class="seccion">
+            <h2>¿Cómo se Juega?</h2>
+            <p>Las reglas son simples:</p>
+            <ul>
+                <li>Selecciona dos cartas para voltearlas</li>
+                <li>Si las cartas coinciden, permanecerán visibles</li>
+                <li>Si no coinciden, se volverán a ocultar</li>
+                <li>Intenta encontrar todas las parejas en el menor tiempo posible</li>
+            </ul>
+        </div>
+
+        <div class="seccion">
+            <h2>Controles</h2>
+            <div class="controles-container">
+                <button id="iniciar" class="boton">Iniciar Juego</button>
+                <button id="reiniciar" class="boton">Reiniciar Juego</button>
+                <button id="finalizar" class="boton">Finalizar Partida</button>
+            </div>
+        </div>
+
+        <div class="seccion">
+            <h2>Resultados</h2>
+            <div class="resultados-container">
+                <div class="contador">
+                    <h3>Parejas Encontradas</h3>
+                    <p id="parejas-encontradas">0</p>
+                </div>
+                <div class="contador">
+                    <h3>Tiempo</h3>
+                    <p id="tiempo">00:00</p>
+                </div>
+                <div class="contador">
+                    <h3>Intentos</h3>
+                    <p id="intentos">0</p>
+                </div>
+            </div>
+            <div id="resultado" class="resultado-texto"></div>
+        </div>
+
+        <div class="seccion">
+            <h2>Historial de Partidas</h2>
+            <div class="controles-container">
+                <button id="ver-historial" class="boton">Ver Historial</button>
+                <button id="ver-ranking" class="boton">Ver Ranking</button>
+                <button id="estadisticas" class="boton">Ver Estadísticas</button>
+                <button id="exportar-db" class="boton">Descargar Base de Datos</button>
+            </div>
+            <div id="historial-container" class="historial-container"></div>
+        </div>
+    </main>
+    
+    <footer>
+        <p><i class="fas fa-map-marker-alt"></i> Av. Corrientes 1234, Ciudad Autónoma de Buenos Aires, Argentina</p>
+        <p><i class="fas fa-building"></i> Edificio Central, Piso 5</p>
+        <p><i class="fas fa-copyright"></i> 2024 Grandes Videojuegos. Todos los derechos reservados.</p>
+    </footer>
+
+    <script src="memoria.js"></script>
+</body>
+</html>
