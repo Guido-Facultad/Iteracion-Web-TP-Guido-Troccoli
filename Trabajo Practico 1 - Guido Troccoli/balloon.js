@@ -32,6 +32,115 @@ let livesText;
 let timeText;
 let balloonTypes = ['red', 'yellow', 'blue', 'green'];
 
+const EVENT_SERVER_URL = 'https://tu-servidor.com/api/eventos';
+const EVENT_HISTORY_KEY = 'gameEventHistory';
+const EVENT_COUNTS_KEY = 'gameEventCounts';
+let pendingEvents = [];
+let eventHistory = [];
+let eventCounts = {};
+
+function loadEventStore() {
+    try {
+        eventHistory = JSON.parse(localStorage.getItem(EVENT_HISTORY_KEY)) || [];
+        eventCounts = JSON.parse(localStorage.getItem(EVENT_COUNTS_KEY)) || {};
+    } catch (error) {
+        console.warn('No se pudo cargar el historial de eventos acumulados:', error);
+        eventHistory = [];
+        eventCounts = {};
+    }
+}
+
+function saveEventStore() {
+    try {
+        localStorage.setItem(EVENT_HISTORY_KEY, JSON.stringify(eventHistory));
+        localStorage.setItem(EVENT_COUNTS_KEY, JSON.stringify(eventCounts));
+    } catch (error) {
+        console.warn('No se pudo guardar el historial de eventos acumulados:', error);
+    }
+}
+
+function flushPendingEvents() {
+    if (!navigator.onLine || pendingEvents.length === 0) return;
+    const eventsToSend = pendingEvents.slice();
+    pendingEvents = [];
+
+    fetch(EVENT_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: eventsToSend })
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Servidor respondió con error');
+        }
+        console.log('Eventos pendientes enviados al servidor:', eventsToSend.length);
+    }).catch(() => {
+        pendingEvents = eventsToSend.concat(pendingEvents);
+        console.warn('No se pudo enviar la cola de eventos. Se mantendrán para reintento.');
+    });
+}
+
+function dispatchLocalEvent(eventObject) {
+    console.log('Evento local generado:', eventObject);
+    document.dispatchEvent(new CustomEvent('gameEvent', { detail: eventObject }));
+}
+
+function logGameEvent(name, details = {}) {
+    const eventObject = {
+        name,
+        timestamp: new Date().toISOString(),
+        details
+    };
+
+    eventCounts[name] = (eventCounts[name] || 0) + 1;
+    eventHistory.push(eventObject);
+    saveEventStore();
+
+    if (!navigator.onLine) {
+        pendingEvents.push(eventObject);
+        dispatchLocalEvent(eventObject);
+        return;
+    }
+
+    fetch(EVENT_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventObject)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Respuesta no OK del servidor');
+        }
+        console.log('Evento enviado al servidor:', name);
+        flushPendingEvents();
+    }).catch(error => {
+        console.warn('No se pudo informar el evento al servidor:', name, error);
+        pendingEvents.push(eventObject);
+        dispatchLocalEvent(eventObject);
+    });
+}
+
+window.addEventListener('online', flushPendingEvents);
+window.addEventListener('beforeunload', () => {
+    if (pendingEvents.length > 0) {
+        localStorage.setItem('pendingGameEvents', JSON.stringify(pendingEvents));
+    }
+});
+
+window.addEventListener('load', () => {
+    loadEventStore();
+    console.log('Eventos acumulados cargados:', eventCounts);
+
+    const savedEvents = localStorage.getItem('pendingGameEvents');
+    if (savedEvents) {
+        try {
+            pendingEvents = JSON.parse(savedEvents).concat(pendingEvents);
+            localStorage.removeItem('pendingGameEvents');
+            flushPendingEvents();
+        } catch (error) {
+            console.warn('No se pudieron restaurar eventos pendientes del almacenamiento local');
+        }
+    }
+});
+
 // Precarga de recursos
 function preload() {
     // Agregar mensajes de depuración
@@ -57,6 +166,7 @@ function preload() {
     // Esperar a que todas las imágenes se carguen
     this.load.on('complete', () => {
         console.log('Todas las imágenes han sido cargadas');
+        logGameEvent('assets_loaded', { files: this.load.totalToLoad });
     });
 }
 
@@ -89,6 +199,8 @@ function create() {
     scoreText = this.add.text(16, 16, 'Globos: 0', { fontSize: '32px', fill: '#fff' });
     livesText = this.add.text(16, 56, 'Vidas: 3', { fontSize: '32px', fill: '#fff' });
     timeText = this.add.text(16, 96, 'Tiempo: 60', { fontSize: '32px', fill: '#fff' });
+
+    logGameEvent('game_created', { score, lives, timeLeft });
 
     // Timer
     this.time.addEvent({
@@ -167,6 +279,7 @@ function popBalloon(player, balloon) {
     
     // Actualizar el contador en el HTML
     document.getElementById('globos-reventados').textContent = score;
+    logGameEvent('balloon_popped', { score });
 }
 
 // Función para perder vidas
@@ -176,6 +289,7 @@ function loseLife() {
     
     // Actualizar el contador de vidas en el HTML
     document.getElementById('vidas').textContent = lives;
+    logGameEvent('life_lost', { lives });
     
     if (lives <= 0) {
         const scene = game.scene.scenes[0];
@@ -246,10 +360,12 @@ function endGame(scene, perdioPorVidas = false, victoria = false) {
     // Actualizar el resultado en el HTML
     document.getElementById('resultado').textContent = 
         `${mensajeFinal}\nPuntuación Final: ${score} globos reventados`;
+    logGameEvent('game_end', { result: mensajeFinal, score, lives, timeLeft });
 }
 
 // Eventos de los botones
 document.getElementById('iniciar').addEventListener('click', () => {
+    logGameEvent('game_start', { hasGame: Boolean(game) });
     if (!game) {
         game = new Phaser.Game(config);
     } else {
@@ -259,6 +375,7 @@ document.getElementById('iniciar').addEventListener('click', () => {
 });
 
 document.getElementById('reiniciar').addEventListener('click', () => {
+    logGameEvent('game_restart', { score, lives, timeLeft });
     // Limpiar los contadores en el HTML
     document.getElementById('resultado').textContent = '';
     document.getElementById('globos-reventados').textContent = '0';
@@ -277,6 +394,7 @@ document.getElementById('reiniciar').addEventListener('click', () => {
 });
 
 document.getElementById('finalizar').addEventListener('click', () => {
+    logGameEvent('game_finish_requested', { score, lives, timeLeft });
     if (game) {
         const scene = game.scene.scenes[0];
         endGame(scene, false);

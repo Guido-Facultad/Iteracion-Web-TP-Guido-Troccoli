@@ -2,6 +2,12 @@
 let victoriasJugador = 0;
 let victoriasComputadora = 0;
 let empates = 0;
+const EVENT_SERVER_URL = 'https://tu-servidor.com/api/eventos';
+const EVENT_HISTORY_KEY = 'rpsGameEventHistory';
+const EVENT_COUNTS_KEY = 'rpsGameEventCounts';
+let pendingEvents = [];
+let eventHistory = [];
+let eventCounts = {};
 
 // Elementos del DOM
 const opcionesJugador = document.querySelectorAll('.opcion-jugador');
@@ -53,6 +59,105 @@ function actualizarContadores(resultado) {
     }
 }
 
+function loadEventStore() {
+    try {
+        eventHistory = JSON.parse(localStorage.getItem(EVENT_HISTORY_KEY)) || [];
+        eventCounts = JSON.parse(localStorage.getItem(EVENT_COUNTS_KEY)) || {};
+    } catch (error) {
+        console.warn('No se pudo cargar el historial de eventos acumulados:', error);
+        eventHistory = [];
+        eventCounts = {};
+    }
+}
+
+function saveEventStore() {
+    try {
+        localStorage.setItem(EVENT_HISTORY_KEY, JSON.stringify(eventHistory));
+        localStorage.setItem(EVENT_COUNTS_KEY, JSON.stringify(eventCounts));
+    } catch (error) {
+        console.warn('No se pudo guardar el historial de eventos acumulados:', error);
+    }
+}
+
+function flushPendingEvents() {
+    if (!navigator.onLine || pendingEvents.length === 0) return;
+    const eventsToSend = pendingEvents.slice();
+    pendingEvents = [];
+
+    fetch(EVENT_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: eventsToSend })
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Servidor respondió con error');
+        }
+        console.log('Eventos pendientes enviados al servidor:', eventsToSend.length);
+    }).catch(() => {
+        pendingEvents = eventsToSend.concat(pendingEvents);
+        console.warn('No se pudo enviar la cola de eventos. Se mantendrán para reintento.');
+    });
+}
+
+function dispatchLocalEvent(eventObject) {
+    console.log('Evento local generado:', eventObject);
+    document.dispatchEvent(new CustomEvent('gameEvent', { detail: eventObject }));
+}
+
+function logGameEvent(name, details = {}) {
+    const eventObject = {
+        name,
+        timestamp: new Date().toISOString(),
+        details
+    };
+
+    eventCounts[name] = (eventCounts[name] || 0) + 1;
+    eventHistory.push(eventObject);
+    saveEventStore();
+
+    if (!navigator.onLine) {
+        pendingEvents.push(eventObject);
+        dispatchLocalEvent(eventObject);
+        return;
+    }
+
+    fetch(EVENT_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventObject)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error('Respuesta no OK del servidor');
+        }
+        console.log('Evento enviado al servidor:', name);
+        flushPendingEvents();
+    }).catch(error => {
+        console.warn('No se pudo informar el evento al servidor:', name, error);
+        pendingEvents.push(eventObject);
+        dispatchLocalEvent(eventObject);
+    });
+}
+
+window.addEventListener('online', flushPendingEvents);
+window.addEventListener('beforeunload', () => {
+    if (pendingEvents.length > 0) {
+        localStorage.setItem('pendingGameEvents', JSON.stringify(pendingEvents));
+    }
+});
+window.addEventListener('load', () => {
+    loadEventStore();
+    const savedEvents = localStorage.getItem('pendingGameEvents');
+    if (savedEvents) {
+        try {
+            pendingEvents = JSON.parse(savedEvents).concat(pendingEvents);
+            localStorage.removeItem('pendingGameEvents');
+            flushPendingEvents();
+        } catch (error) {
+            console.warn('No se pudieron restaurar eventos pendientes del almacenamiento local');
+        }
+    }
+});
+
 // Función para mostrar la imagen del ganador
 function mostrarImagenGanador(resultado, eleccionJugador, eleccionComputadora) {
     const imagenes = {
@@ -86,17 +191,31 @@ function jugarRonda(eleccionJugador) {
                resultado === 'jugador' ? '¡Ganaste!' : '¡Perdiste!';
     
     resultadoTexto.textContent = mensaje;
+    logGameEvent('round_played', {
+        eleccionJugador,
+        eleccionComputadora,
+        resultado,
+        victoriasJugador,
+        victoriasComputadora,
+        empates
+    });
 }
 
-// Event Listeners
+// Eventos
 opcionesJugador.forEach(opcion => {
     opcion.addEventListener('click', () => {
         const eleccion = opcion.dataset.opcion;
+        logGameEvent('player_choice', { eleccion });
         jugarRonda(eleccion);
     });
 });
 
 botonReiniciar.addEventListener('click', () => {
+    logGameEvent('game_restart', {
+        victoriasJugador,
+        victoriasComputadora,
+        empates
+    });
     victoriasJugador = 0;
     victoriasComputadora = 0;
     empates = 0;
@@ -108,6 +227,11 @@ botonReiniciar.addEventListener('click', () => {
 });
 
 botonFinalizar.addEventListener('click', () => {
+    logGameEvent('game_finish_requested', {
+        victoriasJugador,
+        victoriasComputadora,
+        empates
+    });
     const mensajeFinal = `Resultados finales:\n`;
     mensajeFinal += `Victorias del jugador: ${victoriasJugador}\n`;
     mensajeFinal += `Victorias de la computadora: ${victoriasComputadora}\n`;

@@ -4,6 +4,88 @@ const config = {
     tiempoMostrar: 1000, // 1 segundo para mostrar las cartas
     tiempoJuego: 120, // 2 minutos de juego
 };
+// Eventos
+const EVENT_SERVER_URL = 'https://tu-servidor.com/api/eventos';
+const EVENT_HISTORY_KEY = 'memoriaEventHistory';
+const EVENT_COUNTS_KEY = 'memoriaEventCounts';
+let pendingEvents = [];
+let eventHistory = [];
+let eventCounts = {};
+
+function loadEventStore() {
+    try {
+        eventHistory = JSON.parse(localStorage.getItem(EVENT_HISTORY_KEY)) || [];
+        eventCounts = JSON.parse(localStorage.getItem(EVENT_COUNTS_KEY)) || {};
+    } catch (error) {
+        console.warn('No se pudo cargar el historial de eventos acumulados:', error);
+        eventHistory = [];
+        eventCounts = {};
+    }
+}
+
+function saveEventStore() {
+    try {
+        localStorage.setItem(EVENT_HISTORY_KEY, JSON.stringify(eventHistory));
+        localStorage.setItem(EVENT_COUNTS_KEY, JSON.stringify(eventCounts));
+    } catch (error) {
+        console.warn('No se pudo guardar el historial de eventos acumulados:', error);
+    }
+}
+
+function flushPendingEvents() {
+    if (!navigator.onLine || pendingEvents.length === 0) return;
+    const eventsToSend = pendingEvents.slice();
+    pendingEvents = [];
+
+    fetch(EVENT_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ events: eventsToSend })
+    }).then(response => {
+        if (!response.ok) throw new Error('Servidor respondió con error');
+        console.log('Eventos pendientes enviados al servidor:', eventsToSend.length);
+    }).catch(() => {
+        pendingEvents = eventsToSend.concat(pendingEvents);
+        console.warn('No se pudo enviar la cola de eventos. Se mantendrán para reintento.');
+    });
+}
+
+function dispatchLocalEvent(eventObject) {
+    console.log('Evento local generado:', eventObject);
+    document.dispatchEvent(new CustomEvent('gameEvent', { detail: eventObject }));
+}
+
+function logGameEvent(name, details = {}) {
+    const eventObject = { name, timestamp: new Date().toISOString(), details };
+    eventCounts[name] = (eventCounts[name] || 0) + 1;
+    eventHistory.push(eventObject);
+    saveEventStore();
+
+    if (!navigator.onLine) {
+        pendingEvents.push(eventObject);
+        dispatchLocalEvent(eventObject);
+        return;
+    }
+
+    fetch(EVENT_SERVER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventObject)
+    }).then(response => {
+        if (!response.ok) throw new Error('Respuesta no OK del servidor');
+        console.log('Evento enviado al servidor:', name);
+        flushPendingEvents();
+    }).catch(error => {
+        console.warn('No se pudo informar el evento al servidor:', name, error);
+        pendingEvents.push(eventObject);
+        dispatchLocalEvent(eventObject);
+    });
+}
+
+window.addEventListener('online', flushPendingEvents);
+window.addEventListener('beforeunload', () => {
+    if (pendingEvents.length > 0) localStorage.setItem('pendingGameEvents', JSON.stringify(pendingEvents));
+});
 
 // Estado del juego
 let estado = {
@@ -85,6 +167,7 @@ function inicializarJuego() {
         
         elementoCarta.addEventListener('click', () => seleccionarCarta(carta.id));
     });
+    logGameEvent('game_initialized', { totalCartas: estado.cartas.length });
 }
 
 // Función para seleccionar una carta
@@ -102,6 +185,7 @@ function seleccionarCarta(id) {
     elementoCarta.classList.add('volteada');
 
     estado.cartasSeleccionadas.push(carta);
+    logGameEvent('card_selected', { id: carta.id, imagen: carta.imagen });
 
     if (estado.cartasSeleccionadas.length === 2) {
         estado.intentos++;
@@ -119,11 +203,13 @@ function verificarPareja() {
         carta1.encontrada = carta2.encontrada = true;
         estado.parejasEncontradas++;
         elementos.parejasEncontradas.textContent = estado.parejasEncontradas;
+        logGameEvent('pair_found', { imagen: carta1.imagen, parejasEncontradas: estado.parejasEncontradas });
         
         if (estado.parejasEncontradas === config.totalPares) {
             finalizarJuego(true);
         }
     } else {
+        logGameEvent('pair_miss', { imagen1: carta1.imagen, imagen2: carta2.imagen });
         // No es pareja
         setTimeout(() => {
             carta1.volteada = carta2.volteada = false;
@@ -233,6 +319,7 @@ function finalizarJuego(ganador) {
     
     // Guardar partida en la base de datos (el TRIGGER actualizará estadísticas automáticamente)
     guardarPartida(ganador, tiempoTranscurrido);
+    logGameEvent('game_end', { ganador: ganador ? 1 : 0, parejasEncontradas: estado.parejasEncontradas, intentos: estado.intentos, tiempoTranscurrido });
     
     // Esperar un momento para que el TRIGGER se ejecute antes de obtener los datos
     setTimeout(() => {
@@ -461,6 +548,7 @@ async function inicializarBaseDatos() {
         `);
         
         console.log('Base de datos inicializada correctamente con triggers y views');
+        logGameEvent('db_initialized');
     } catch (error) {
         console.error('Error al inicializar la base de datos:', error);
     }
@@ -511,6 +599,7 @@ function guardarPartida(ganada, tiempoTranscurrido) {
         
         console.log('Partida guardada en la base de datos con métricas calculadas');
         console.log('Eficiencia:', eficiencia, 'Tiempo por pareja:', tiempoPromedioPorPareja);
+        logGameEvent('match_saved', { ganada: ganada ? 1 : 0, parejasEncontradas: estado.parejasEncontradas, intentos: estado.intentos, tiempoTranscurrido, eficiencia });
         
         // El TRIGGER se ejecutará automáticamente para actualizar estadísticas_globales
     } catch (error) {
@@ -539,6 +628,7 @@ function mostrarHistorial() {
         elementos.historialContainer.innerHTML = '<p>Base de datos no inicializada.</p>';
         return;
     }
+    logGameEvent('view_history');
     
     try {
         // Usar la VIEW para obtener datos detallados
@@ -609,6 +699,7 @@ function exportarBaseDatos() {
         
         URL.revokeObjectURL(url);
         alert('Base de datos descargada como memoria_juego.db. Puedes abrirla con SQLite Studio.');
+        logGameEvent('export_db');
     } catch (error) {
         console.error('Error al exportar la base de datos:', error);
         alert('Error al exportar la base de datos');
@@ -621,6 +712,7 @@ function mostrarEstadisticas() {
         alert('Base de datos no inicializada');
         return;
     }
+    logGameEvent('view_stats');
     
     try {
         const estadisticasGlobales = obtenerEstadisticasGlobales();
@@ -656,6 +748,7 @@ function mostrarRanking() {
         alert('Base de datos no inicializada');
         return;
     }
+    logGameEvent('view_ranking');
     
     try {
         const resultado = db.exec('SELECT * FROM vista_ranking_mejores');
@@ -700,6 +793,7 @@ function mostrarRanking() {
 // Función para comenzar el juego
 function comenzarJuego() {
     if (!estado.juegoActivo) {
+        logGameEvent('game_start');
         iniciarTemporizador();
         estado.juegoActivo = true;
         // Deshabilitar el botón de iniciar solo cuando se comienza el juego
@@ -724,10 +818,12 @@ elementos.exportarDb.addEventListener('click', exportarBaseDatos);
 elementos.estadisticas.addEventListener('click', mostrarEstadisticas);
 
 elementos.botonReiniciar.addEventListener('click', () => {
+    logGameEvent('game_restart');
     // Limpiar el temporizador anterior si existe
     if (estado.timer) {
         clearInterval(estado.timer);
     }
+
     
     elementos.contenedorCartas.innerHTML = '';
     estado = {
@@ -758,6 +854,7 @@ elementos.botonReiniciar.addEventListener('click', () => {
 });
 
 elementos.botonFinalizar.addEventListener('click', () => {
+    logGameEvent('game_finish_requested');
     if (estado.juegoActivo) {
         finalizarJuego(false);
     }
@@ -765,6 +862,7 @@ elementos.botonFinalizar.addEventListener('click', () => {
 
 // Iniciar el juego cuando se carga la página
 document.addEventListener('DOMContentLoaded', async () => {
+    loadEventStore();
     await inicializarBaseDatos();
     inicializarJuego();
     // Deshabilitar todas las cartas inicialmente
