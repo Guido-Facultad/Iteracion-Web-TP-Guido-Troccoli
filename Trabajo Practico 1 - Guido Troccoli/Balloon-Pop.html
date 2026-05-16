@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Juego Balloon Pop! - Grandes Videojuegos</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style>
+        #juego-container {
+            width: 800px;
+            height: 600px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="titulo-principal">Juego Balloon Pop!</h1>
+    
+    <nav class="menu-horizontal">
+        <ul>
+            <li><a href="index.html">Inicio</a></li>
+            <li><a href="videojuegos.html">Videojuegos</a></li>
+            <li><a href="recomendaciones.html">Recomendaciones</a></li>
+            <li><a href="contacto.html">Contacto</a></li>
+        </ul>
+    </nav>
+    
+    <main class="contenido-principal">
+        <p class="descripcion">
+            Opossummon esta causando problemas lanzando multiples globos. 
+            Ayuda a Gumdramon a reventar los globos antes de que toquen el suelo.
+        </p>
+        
+        <div class="seccion">
+            <h2>¿Cómo se Juega?</h2>
+            <p>Las reglas son simples:</p>
+            <ul>
+                <li>Mueve a Gumdramon con las flechas del teclado para reventar los globos</li>
+                <li>Tienes 3 oportunidades para fallar</li>
+                <li>Si 3 globos tocan el suelo, pierdes</li>
+                <li>Intenta reventar la mayor cantidad de globos antes de que termine el tiempo</li>
+            </ul>
+        </div>
+
+        <div class="seccion">
+            <h2>Controles</h2>
+            <div class="controles-container">
+                <button id="iniciar" class="boton">Iniciar Juego</button>
+                <button id="reiniciar" class="boton">Reiniciar Juego</button>
+                <button id="finalizar" class="boton">Finalizar Partida</button>
+            </div>
+        </div>
+
+        <div class="seccion">
+            <h2>Resultados</h2>
+            <div class="resultados-container">
+                <div class="contador">
+                    <h3>Globos Reventados</h3>
+                    <p id="globos-reventados">0</p>
+                </div>
+                <div class="contador">
+                    <h3>Tiempo</h3>
+                    <p id="tiempo">60</p>
+                </div>
+                <div class="contador">
+                    <h3>Vidas</h3>
+                    <p id="vidas">3</p>
+                </div>
+            </div>
+            <div id="resultado" class="resultado-texto"></div>
+        </div>
+
+        <div id="juego-container"></div>
+    </main>
+    
+    <footer>
+        <p><i class="fas fa-map-marker-alt"></i> Av. Corrientes 1234, Ciudad Autónoma de Buenos Aires, Argentina</p>
+        <p><i class="fas fa-building"></i> Edificio Central, Piso 5</p>
+        <p><i class="fas fa-copyright"></i> 2024 Grandes Videojuegos. Todos los derechos reservados.</p>
+    </footer>
+
+    <script src="balloon.js"></script>
+</body>
+</html>

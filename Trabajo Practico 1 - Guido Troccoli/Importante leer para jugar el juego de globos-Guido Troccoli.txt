@@ -1,0 +1,1 @@
+Aqui para el cuarto y último trabajo práctico como tuve que desarrollar el tercer juego para mi página web haciendo uso de PHASER en el javascript, para jugarlo bien con las imagenes y el fondo cargados hay que hacerlo abriendolo desde visual studio code y usando la extension live server y activarla para poder verlo con los graficos correctos
