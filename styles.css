@@ -609,3 +609,89 @@ footer i {
     margin-bottom: 10px;
     color: #333;
 }
+
+/* Estilos para el cuadro de resultados finales */
+.cuadro-resultados-finales {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 30px;
+    margin-top: 30px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    color: white;
+    text-align: center;
+    border: 2px solid #5a67d8;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cuadro-resultados-finales h3 {
+    margin-top: 0;
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.resultados-finales-contenido {
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.resultado-ganador {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 15px 0;
+    padding: 15px;
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 5px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.estadisticas-finales {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.stat-final {
+    background-color: rgba(255,255,255,0.15);
+    padding: 15px 20px;
+    border-radius: 5px;
+    min-width: 200px;
+    backdrop-filter: blur(5px);
+}
+
+.stat-final .label {
+    display: block;
+    font-size: 0.95em;
+    margin-bottom: 8px;
+    opacity: 0.9;
+}
+
+.stat-final .valor {
+    display: block;
+    font-size: 2em;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.mensaje-final {
+    font-size: 1.2em;
+    margin-top: 20px;
+    font-style: italic;
+    opacity: 0.95;
+}

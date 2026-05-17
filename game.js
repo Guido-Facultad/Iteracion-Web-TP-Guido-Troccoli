@@ -195,12 +195,53 @@ botonFinalizar.addEventListener('click', () => {
         victoriasComputadora,
         empates
     });
-    let mensajeFinal = `Resultados finales:\n`;
-    mensajeFinal += `Victorias del jugador: ${victoriasJugador}\n`;
-    mensajeFinal += `Victorias de la computadora: ${victoriasComputadora}\n`;
-    mensajeFinal += `Empates: ${empates}\n`;
-    mensajeFinal += `¡Gracias por jugar!`;
     
-    alert(mensajeFinal);
-    window.close();
+    // Crear el cuadro de resultados finales
+    let cuadroResultados = document.getElementById('cuadro-resultados-finales');
+    
+    // Si ya existe, lo removemos para crear uno nuevo
+    if (cuadroResultados) {
+        cuadroResultados.remove();
+    }
+    
+    // Crear el nuevo cuadro
+    cuadroResultados = document.createElement('div');
+    cuadroResultados.id = 'cuadro-resultados-finales';
+    cuadroResultados.className = 'cuadro-resultados-finales';
+    
+    // Determinar el ganador general
+    let ganadorGeneral = '';
+    if (victoriasJugador > victoriasComputadora) {
+        ganadorGeneral = '¡Felicidades! ¡Ganaste la partida!';
+    } else if (victoriasComputadora > victoriasJugador) {
+        ganadorGeneral = '¡La computadora ganó la partida!';
+    } else {
+        ganadorGeneral = '¡La partida terminó en empate!';
+    }
+    
+    cuadroResultados.innerHTML = `
+        <h3>Resultados Finales de la Partida</h3>
+        <div class="resultados-finales-contenido">
+            <p class="resultado-ganador">${ganadorGeneral}</p>
+            <div class="estadisticas-finales">
+                <div class="stat-final">
+                    <span class="label">Victorias del Jugador:</span>
+                    <span class="valor">${victoriasJugador}</span>
+                </div>
+                <div class="stat-final">
+                    <span class="label">Victorias de la Computadora:</span>
+                    <span class="valor">${victoriasComputadora}</span>
+                </div>
+                <div class="stat-final">
+                    <span class="label">Empates:</span>
+                    <span class="valor">${empates}</span>
+                </div>
+            </div>
+            <p class="mensaje-final">¡Gracias por jugar!</p>
+        </div>
+    `;
+    
+    // Insertar el cuadro después del contenedor de controles
+    const controlesContainer = document.querySelector('.controles-container');
+    controlesContainer.parentNode.insertBefore(cuadroResultados, controlesContainer.nextSibling);
 }); 
