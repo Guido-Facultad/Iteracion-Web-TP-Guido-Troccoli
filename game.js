@@ -195,7 +195,7 @@ botonFinalizar.addEventListener('click', () => {
         victoriasComputadora,
         empates
     });
-    const mensajeFinal = `Resultados finales:\n`;
+    let mensajeFinal = `Resultados finales:\n`;
     mensajeFinal += `Victorias del jugador: ${victoriasJugador}\n`;
     mensajeFinal += `Victorias de la computadora: ${victoriasComputadora}\n`;
     mensajeFinal += `Empates: ${empates}\n`;
