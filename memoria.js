@@ -5,7 +5,7 @@ const config = {
     tiempoJuego: 120, // 2 minutos de juego
 };
 // Eventos
-const EVENT_SERVER_URL = 'https://guido-facultad.github.io/Iteracion-Web-TP1/';
+const EVENT_SERVER_URL = null; // No remote event endpoint on GitHub Pages
 const EVENT_HISTORY_KEY = 'memoriaEventHistory';
 const EVENT_COUNTS_KEY = 'memoriaEventCounts';
 let pendingEvents = [];
@@ -33,21 +33,7 @@ function saveEventStore() {
 }
 
 function flushPendingEvents() {
-    if (!navigator.onLine || pendingEvents.length === 0) return;
-    const eventsToSend = pendingEvents.slice();
-    pendingEvents = [];
-
-    fetch(EVENT_SERVER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events: eventsToSend })
-    }).then(response => {
-        if (!response.ok) throw new Error('Servidor respondió con error');
-        console.log('Eventos pendientes enviados al servidor:', eventsToSend.length);
-    }).catch(() => {
-        pendingEvents = eventsToSend.concat(pendingEvents);
-        console.warn('No se pudo enviar la cola de eventos. Se mantendrán para reintento.');
-    });
+    // No remote server available on GitHub Pages; los eventos se guardan localmente.
 }
 
 function dispatchLocalEvent(eventObject) {
@@ -60,26 +46,7 @@ function logGameEvent(name, details = {}) {
     eventCounts[name] = (eventCounts[name] || 0) + 1;
     eventHistory.push(eventObject);
     saveEventStore();
-
-    if (!navigator.onLine) {
-        pendingEvents.push(eventObject);
-        dispatchLocalEvent(eventObject);
-        return;
-    }
-
-    fetch(EVENT_SERVER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventObject)
-    }).then(response => {
-        if (!response.ok) throw new Error('Respuesta no OK del servidor');
-        console.log('Evento enviado al servidor:', name);
-        flushPendingEvents();
-    }).catch(error => {
-        console.warn('No se pudo informar el evento al servidor:', name, error);
-        pendingEvents.push(eventObject);
-        dispatchLocalEvent(eventObject);
-    });
+    dispatchLocalEvent(eventObject);
 }
 
 window.addEventListener('online', flushPendingEvents);
