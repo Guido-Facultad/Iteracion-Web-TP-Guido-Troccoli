@@ -161,9 +161,9 @@ window.addEventListener('load', () => {
 // Función para mostrar la imagen del ganador
 function mostrarImagenGanador(resultado, eleccionJugador, eleccionComputadora) {
     const imagenes = {
-        'agua': 'img/gomamon.jpg',
-        'fuego': 'img/coronamon.jpg',
-        'tierra': 'img/armadillomon.png'
+        'agua': 'img/Gomamon.jpg',
+        'fuego': 'img/Coronamon.jpg',
+        'tierra': 'img/Armadillomon.png'
     };
 
     if (resultado === 'empate') {
