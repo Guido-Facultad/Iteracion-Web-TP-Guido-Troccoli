@@ -5,7 +5,7 @@ const config = {
     tiempoJuego: 120, // 2 minutos de juego
 };
 // Eventos
-const EVENT_SERVER_URL = 'https://tu-servidor.com/api/eventos';
+const EVENT_SERVER_URL = 'https://guido-facultad.github.io/Iteracion-Web-TP1/';
 const EVENT_HISTORY_KEY = 'memoriaEventHistory';
 const EVENT_COUNTS_KEY = 'memoriaEventCounts';
 let pendingEvents = [];

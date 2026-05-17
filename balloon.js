@@ -32,7 +32,7 @@ let livesText;
 let timeText;
 let balloonTypes = ['red', 'yellow', 'blue', 'green'];
 
-const EVENT_SERVER_URL = 'https://tu-servidor.com/api/eventos';
+const EVENT_SERVER_URL = 'https://guido-facultad.github.io/Iteracion-Web-TP1/';
 const EVENT_HISTORY_KEY = 'gameEventHistory';
 const EVENT_COUNTS_KEY = 'gameEventCounts';
 let pendingEvents = [];
