@@ -54,6 +54,31 @@
         </div>
 
         <div class="seccion">
+            <h2>Eventos del Juego</h2>
+            <div class="controles-container">
+                <button id="descargar-eventos" class="boton" onclick="downloadEventsJSON()">📥 Descargar Eventos JSON</button>
+                <button id="ver-eventos" class="boton" onclick="showEventsModal()">📋 Ver Eventos</button>
+                <button id="limpiar-eventos" class="boton" onclick="clearAllEvents()">🗑️ Limpiar Eventos</button>
+            </div>
+            <div id="eventos-info" style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                <p><strong>Total de eventos registrados:</strong> <span id="total-eventos">0</span></p>
+                <pre id="eventos-preview" style="background: #fff; padding: 10px; border-radius: 3px; overflow-x: auto; max-height: 300px;"></pre>
+            </div>
+        </div>
+
+        <div class="seccion">
+            <h2>Ranking en Tiempo Real</h2>
+            <p>Estado WebSocket: <strong id="ws-connection-status">Desconectado</strong></p>
+            <div class="controles-container">
+                <button id="reconectar-websocket" class="boton">Reconectar WebSocket</button>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                <h3>Jugadores actuales</h3>
+                <ul id="ranking-list" style="padding-left: 20px; list-style-type: decimal;"></ul>
+            </div>
+        </div>
+
+        <div class="seccion">
             <h2>Resultados</h2>
             <div class="resultados-container">
                 <div class="contador">

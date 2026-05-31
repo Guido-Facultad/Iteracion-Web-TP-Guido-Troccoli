@@ -35,9 +35,12 @@ let balloonTypes = ['red', 'yellow', 'blue', 'green'];
 const EVENT_SERVER_URL = null; // No remote event endpoint on GitHub Pages
 const EVENT_HISTORY_KEY = 'gameEventHistory';
 const EVENT_COUNTS_KEY = 'gameEventCounts';
+const WS_SERVER_URL = 'wss://gamehubmanager.azurewebsites.net/ws';
 let pendingEvents = [];
+let websocketQueue = [];
 let eventHistory = [];
 let eventCounts = {};
+let socket = null;
 
 function loadEventStore() {
     try {
@@ -59,8 +62,198 @@ function saveEventStore() {
     }
 }
 
+function isWebSocketOpen() {
+    return socket && socket.readyState === WebSocket.OPEN;
+}
+
+function setWebSocketStatus(status) {
+    const statusElement = document.getElementById('ws-connection-status');
+    if (statusElement) {
+        statusElement.textContent = status;
+    }
+}
+
+function connectWebSocket() {
+    if (!('WebSocket' in window)) {
+        console.warn('WebSocket no es compatible en este navegador.');
+        setWebSocketStatus('No soportado');
+        return;
+    }
+    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+
+    socket = new WebSocket(WS_SERVER_URL);
+    setWebSocketStatus('Conectando...');
+
+    socket.addEventListener('open', () => {
+        console.log('WebSocket conectado a', WS_SERVER_URL);
+        setWebSocketStatus('Conectado');
+        while (websocketQueue.length > 0) {
+            sendWebSocketEvent(websocketQueue.shift());
+        }
+        while (pendingEvents.length > 0) {
+            sendWebSocketEvent(pendingEvents.shift());
+        }
+        localStorage.removeItem('pendingGameEvents');
+    });
+
+    socket.addEventListener('message', (message) => {
+        try {
+            const payload = JSON.parse(message.data);
+            console.log('Mensaje recibido del servidor WebSocket:', payload);
+            if (payload.type === 'ranking_update' || payload.ranking || payload.players || payload.data) {
+                updateRankingUI(payload);
+            }
+        } catch (error) {
+            console.warn('No se pudo parsear el mensaje WebSocket:', error, message.data);
+        }
+    });
+
+    socket.addEventListener('close', () => {
+        console.warn('WebSocket desconectado. Intentando reconectar en 5 segundos...');
+        setWebSocketStatus('Desconectado');
+        setTimeout(connectWebSocket, 5000);
+    });
+
+    socket.addEventListener('error', (error) => {
+        console.error('Error de WebSocket:', error);
+        setWebSocketStatus('Error');
+    });
+}
+
+function sendWebSocketEvent(eventObject) {
+    if (!isWebSocketOpen()) {
+        websocketQueue.push(eventObject);
+        return;
+    }
+
+    const envelope = {
+        type: 'game_event',
+        payload: eventObject
+    };
+
+    socket.send(JSON.stringify(envelope));
+}
+
 function flushPendingEvents() {
-    // No remote server available on GitHub Pages; los eventos se guardan localmente.
+    if (isWebSocketOpen()) {
+        while (websocketQueue.length > 0) {
+            sendWebSocketEvent(websocketQueue.shift());
+        }
+        while (pendingEvents.length > 0) {
+            sendWebSocketEvent(pendingEvents.shift());
+        }
+        localStorage.removeItem('pendingGameEvents');
+    }
+}
+
+function exportEventsAsJSON() {
+    const exportData = {
+        exportDate: new Date().toISOString(),
+        gameStats: {
+            totalEvents: eventHistory.length,
+            eventCounts: eventCounts
+        },
+        events: eventHistory
+    };
+    return JSON.stringify(exportData, null, 2);
+}
+
+function downloadEventsJSON() {
+    const jsonData = exportEventsAsJSON();
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `game-events-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    console.log('Eventos descargados como JSON');
+}
+
+function getEventsJSON() {
+    return exportEventsAsJSON();
+}
+
+function sendEventsToServer(serverURL) {
+    const jsonData = exportEventsAsJSON();
+    fetch(serverURL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: jsonData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Eventos enviados al servidor:', data);
+        logGameEvent('events_sent_to_server', { serverURL, eventCount: eventHistory.length });
+    })
+    .catch(error => {
+        console.error('Error al enviar eventos:', error);
+        logGameEvent('events_send_error', { error: error.message });
+    });
+}
+
+function updateRankingUI(serverPayload) {
+    const rankingContainer = document.getElementById('ranking-list');
+    if (!rankingContainer) {
+        return;
+    }
+
+    let ranking = [];
+    if (Array.isArray(serverPayload.ranking)) {
+        ranking = serverPayload.ranking;
+    } else if (Array.isArray(serverPayload.players)) {
+        ranking = serverPayload.players;
+    } else if (Array.isArray(serverPayload.data)) {
+        ranking = serverPayload.data;
+    } else if (serverPayload.type === 'ranking_update' && Array.isArray(serverPayload.payload)) {
+        ranking = serverPayload.payload;
+    }
+
+    rankingContainer.innerHTML = '';
+    if (ranking.length === 0) {
+        rankingContainer.innerHTML = '<li>No hay datos de ranking disponibles</li>';
+        return;
+    }
+
+    ranking.forEach((player, index) => {
+        const item = document.createElement('li');
+        const name = player.name || player.username || player.id || `Jugador ${index + 1}`;
+        const value = player.score !== undefined ? player.score : player.points || '';
+        item.textContent = `${index + 1}. ${name}${value !== '' ? ` — ${value}` : ''}`;
+        rankingContainer.appendChild(item);
+    });
+}
+
+function showEventsModal() {
+    const eventosInfo = document.getElementById('eventos-info');
+    const totalEventos = document.getElementById('total-eventos');
+    const eventosPreview = document.getElementById('eventos-preview');
+    
+    totalEventos.textContent = eventHistory.length;
+    eventosPreview.textContent = exportEventsAsJSON();
+    eventosInfo.style.display = 'block';
+    
+    console.log('Mostrando eventos:', eventHistory);
+}
+
+function clearAllEvents() {
+    if (confirm('¿Estás seguro de que deseas limpiar todos los eventos registrados?')) {
+        eventHistory = [];
+        eventCounts = {};
+        saveEventStore();
+        alert('Todos los eventos han sido eliminados.');
+        logGameEvent('events_cleared', {});
+        const eventosInfo = document.getElementById('eventos-info');
+        if (eventosInfo) {
+            eventosInfo.style.display = 'none';
+        }
+    }
 }
 
 function dispatchLocalEvent(eventObject) {
@@ -79,6 +272,12 @@ function logGameEvent(name, details = {}) {
     eventHistory.push(eventObject);
     saveEventStore();
     dispatchLocalEvent(eventObject);
+
+    if (isWebSocketOpen()) {
+        sendWebSocketEvent(eventObject);
+    } else {
+        websocketQueue.push(eventObject);
+    }
 }
 
 window.addEventListener('online', flushPendingEvents);
@@ -102,6 +301,8 @@ window.addEventListener('load', () => {
             console.warn('No se pudieron restaurar eventos pendientes del almacenamiento local');
         }
     }
+
+    connectWebSocket();
 });
 
 // Precarga de recursos
@@ -362,6 +563,11 @@ document.getElementById('finalizar').addEventListener('click', () => {
         const scene = game.scene.scenes[0];
         endGame(scene, false);
     }
+});
+
+document.getElementById('reconectar-websocket').addEventListener('click', () => {
+    connectWebSocket();
+    logGameEvent('websocket_reconnect_requested', {});
 });
 
 // Función para reiniciar el juego
