@@ -35,9 +35,17 @@ let balloonTypes = ['red', 'yellow', 'blue', 'green'];
 const EVENT_SERVER_URL = null; // No remote event endpoint on GitHub Pages
 const EVENT_HISTORY_KEY = 'gameEventHistory';
 const EVENT_COUNTS_KEY = 'gameEventCounts';
-const WS_SERVER_URL = 'wss://gamehubmanager.azurewebsites.net/ws';
+
+// Detectar si estamos en desarrollo local o producción
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const WS_SERVER_URL = isDevelopment 
+    ? 'ws://localhost:8080'  // Servidor local para desarrollo
+    : 'wss://gamehubmanager.azurewebsites.net/ws';  // Servidor remoto (no disponible)
+
 let pendingEvents = [];
 let websocketQueue = [];
+let wsConnectionAttempts = 0;
+const MAX_RECONNECTION_ATTEMPTS = 5;
 let eventHistory = [];
 let eventCounts = {};
 let socket = null;
@@ -80,9 +88,15 @@ function connectWebSocket() {
         return;
     }
     if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        console.log('WebSocket ya está conectando o conectado.');
         return;
     }
 
+    wsConnectionAttempts++;
+    const serverUrlDisplay = isDevelopment ? `ws://localhost:8080 [DEV]` : WS_SERVER_URL;
+    
+    console.log(`[Intento ${wsConnectionAttempts}/${MAX_RECONNECTION_ATTEMPTS}] Conectando a ${serverUrlDisplay}...`);
+    
     try {
         socket = new WebSocket(WS_SERVER_URL);
     } catch (creationError) {
@@ -94,8 +108,10 @@ function connectWebSocket() {
     setWebSocketStatus('Conectando...');
 
     socket.addEventListener('open', (evt) => {
-        console.log('WebSocket conectado a', WS_SERVER_URL, evt);
-        setWebSocketStatus('Conectado');
+        console.log('✅ WebSocket conectado a', WS_SERVER_URL);
+        wsConnectionAttempts = 0; // Reiniciar contador
+        setWebSocketStatus('✓ Conectado');
+        
         while (websocketQueue.length > 0) {
             sendWebSocketEvent(websocketQueue.shift());
         }
@@ -108,7 +124,7 @@ function connectWebSocket() {
     socket.addEventListener('message', (message) => {
         try {
             const payload = JSON.parse(message.data);
-            console.log('Mensaje recibido del servidor WebSocket:', payload);
+            console.log('📨 Mensaje del servidor:', payload);
             if (payload.type === 'ranking_update' || payload.ranking || payload.players || payload.data) {
                 updateRankingUI(payload);
             }
@@ -118,19 +134,34 @@ function connectWebSocket() {
     });
 
     socket.addEventListener('close', (event) => {
-        console.warn('WebSocket desconectado.', { code: event.code, reason: event.reason, wasClean: event.wasClean });
+        console.warn('⚠️ WebSocket desconectado.', { code: event.code, reason: event.reason, wasClean: event.wasClean });
         setWebSocketStatus(`Desconectado (${event.code})`);
-        // Reconectar pasados 5 segundos
-        setTimeout(connectWebSocket, 5000);
+        
+        // Intentar reconectar si no hemos llegado al máximo de intentos
+        if (wsConnectionAttempts < MAX_RECONNECTION_ATTEMPTS) {
+            const delay = Math.min(5000 * wsConnectionAttempts, 30000); // Backoff exponencial máx 30s
+            console.log(`Reintentando en ${delay}ms...`);
+            setTimeout(connectWebSocket, delay);
+        } else {
+            console.error(`❌ No se pudo conectar después de ${MAX_RECONNECTION_ATTEMPTS} intentos. Usa el botón "Reconectar" para intentar de nuevo.`);
+            setWebSocketStatus(`Falló (${MAX_RECONNECTION_ATTEMPTS} intentos)`);
+        }
     });
 
     socket.addEventListener('error', (event) => {
-        console.error('Error de WebSocket (evento):', event, 'readyState:', socket ? socket.readyState : 'no-socket');
-        setWebSocketStatus('Error');
+        console.error('❌ Error de WebSocket:', {
+            readyState: socket?.readyState,
+            url: socket?.url,
+            error: event
+        });
+        setWebSocketStatus('Error de conexión');
+        
         try {
-            if (socket && socket.readyState !== WebSocket.CLOSED) socket.close();
+            if (socket && socket.readyState !== WebSocket.CLOSED) {
+                socket.close();
+            }
         } catch (closeErr) {
-            console.warn('Error al intentar cerrar socket tras error:', closeErr);
+            console.warn('Error al cerrar socket:', closeErr);
         }
     });
 }

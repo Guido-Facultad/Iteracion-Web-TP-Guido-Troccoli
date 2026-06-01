@@ -1,0 +1,15 @@
+{
+  "name": "balloon-pop-websocket-server",
+  "version": "1.0.0",
+  "description": "Servidor WebSocket local para testing del juego Balloon Pop",
+  "main": "websocket-server.js",
+  "scripts": {
+    "start": "node websocket-server.js",
+    "dev": "node websocket-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "author": "",
+  "license": "MIT"
+}
