@@ -83,11 +83,18 @@ function connectWebSocket() {
         return;
     }
 
-    socket = new WebSocket(WS_SERVER_URL);
+    try {
+        socket = new WebSocket(WS_SERVER_URL);
+    } catch (creationError) {
+        console.error('Fallo al crear WebSocket con URL', WS_SERVER_URL, creationError);
+        setWebSocketStatus('Error al crear socket');
+        return;
+    }
+
     setWebSocketStatus('Conectando...');
 
-    socket.addEventListener('open', () => {
-        console.log('WebSocket conectado a', WS_SERVER_URL);
+    socket.addEventListener('open', (evt) => {
+        console.log('WebSocket conectado a', WS_SERVER_URL, evt);
         setWebSocketStatus('Conectado');
         while (websocketQueue.length > 0) {
             sendWebSocketEvent(websocketQueue.shift());
@@ -110,15 +117,21 @@ function connectWebSocket() {
         }
     });
 
-    socket.addEventListener('close', () => {
-        console.warn('WebSocket desconectado. Intentando reconectar en 5 segundos...');
-        setWebSocketStatus('Desconectado');
+    socket.addEventListener('close', (event) => {
+        console.warn('WebSocket desconectado.', { code: event.code, reason: event.reason, wasClean: event.wasClean });
+        setWebSocketStatus(`Desconectado (${event.code})`);
+        // Reconectar pasados 5 segundos
         setTimeout(connectWebSocket, 5000);
     });
 
-    socket.addEventListener('error', (error) => {
-        console.error('Error de WebSocket:', error);
+    socket.addEventListener('error', (event) => {
+        console.error('Error de WebSocket (evento):', event, 'readyState:', socket ? socket.readyState : 'no-socket');
         setWebSocketStatus('Error');
+        try {
+            if (socket && socket.readyState !== WebSocket.CLOSED) socket.close();
+        } catch (closeErr) {
+            console.warn('Error al intentar cerrar socket tras error:', closeErr);
+        }
     });
 }
 
