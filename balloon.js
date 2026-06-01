@@ -110,6 +110,7 @@ function connectWebSocket() {
     socket.addEventListener('open', (evt) => {
         console.log('✅ WebSocket conectado a', WS_SERVER_URL);
         wsConnectionAttempts = 0; // Reiniciar contador
+        stopRankingSimulation();
         setWebSocketStatus('✓ Conectado');
         
         while (websocketQueue.length > 0) {
@@ -145,6 +146,8 @@ function connectWebSocket() {
         } else {
             console.error(`❌ No se pudo conectar después de ${MAX_RECONNECTION_ATTEMPTS} intentos. Usa el botón "Reconectar" para intentar de nuevo.`);
             setWebSocketStatus(`Falló (${MAX_RECONNECTION_ATTEMPTS} intentos)`);
+            // Iniciar simulación para que la UI muestre datos aunque el servidor no exista
+            startRankingSimulation();
         }
     });
 
@@ -258,20 +261,52 @@ function updateRankingUI(serverPayload) {
     } else if (serverPayload.type === 'ranking_update' && Array.isArray(serverPayload.payload)) {
         ranking = serverPayload.payload;
     }
+    // Asegurarse que los datos estén ordenados por score descendente
+    ranking.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    // Mostrar únicamente el top 5
+    const top = ranking.slice(0, 5);
 
     rankingContainer.innerHTML = '';
-    if (ranking.length === 0) {
+    if (top.length === 0) {
         rankingContainer.innerHTML = '<li>No hay datos de ranking disponibles</li>';
         return;
     }
 
-    ranking.forEach((player, index) => {
+    top.forEach((player, index) => {
         const item = document.createElement('li');
         const name = player.name || player.username || player.id || `Jugador ${index + 1}`;
-        const value = player.score !== undefined ? player.score : player.points || '';
+        const value = (player.score !== undefined) ? player.score : (player.points || '');
         item.textContent = `${index + 1}. ${name}${value !== '' ? ` — ${value}` : ''}`;
         rankingContainer.appendChild(item);
     });
+}
+
+// --- Fallback: simulación de ranking para demos locales cuando no hay servidor ---
+let rankingSimInterval = null;
+function startRankingSimulation() {
+    if (rankingSimInterval) return;
+    console.log('Iniciando simulación de ranking (fallback)');
+    const generate = () => {
+        const players = [];
+        for (let i = 0; i < 5; i++) {
+            players.push({
+                id: `sim-${i+1}`,
+                name: `SimJugador ${i+1}`,
+                score: Math.floor(Math.random() * 5000)
+            });
+        }
+        updateRankingUI({ ranking: players });
+    };
+    generate();
+    rankingSimInterval = setInterval(generate, 4000);
+}
+
+function stopRankingSimulation() {
+    if (!rankingSimInterval) return;
+    clearInterval(rankingSimInterval);
+    rankingSimInterval = null;
+    console.log('Simulación de ranking detenida');
 }
 
 function showEventsModal() {
@@ -610,6 +645,9 @@ document.getElementById('finalizar').addEventListener('click', () => {
 });
 
 document.getElementById('reconectar-websocket').addEventListener('click', () => {
+    // Reiniciar contador para permitir nuevos intentos y detener la simulación fallback
+    wsConnectionAttempts = 0;
+    stopRankingSimulation();
     connectWebSocket();
     logGameEvent('websocket_reconnect_requested', {});
 });
