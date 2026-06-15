@@ -2,7 +2,7 @@
     "orientation": "portrait",
   "name": "Balloon Pop! - Grandes Videojuegos",
   "short_name": "BalloonPop",
-  "description": "A casual balloon popping game inspired by classic video games.",
+  "description": "Un juego de atrapar globos que caen sin fallar no más de 3 veces.",
   "start_url": "./Balloon-Pop.html",
   "display": "standalone",
   "display_override": ["window-controls-overlay"],
