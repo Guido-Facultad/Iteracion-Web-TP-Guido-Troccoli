@@ -1,7 +1,10 @@
 {
     "orientation": "portrait",
+    "id": "com.usuario.balloonpop",
   "name": "Balloon Pop! - Grandes Videojuegos",
   "short_name": "BalloonPop",
+  "categories": ["games","puzzle"],
+  "iarc_rating_id": "IARC-000000-000000",
   "description": "Un juego de atrapar globos que caen sin fallar no más de 3 veces.",
   "start_url": "./Balloon-Pop.html",
   "display": "standalone",
@@ -19,6 +22,21 @@
       "src": "img/assets/Gumdramon.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "widgets": [
+    {
+      "name": "BalloonScore",
+      "short_name": "Score",
+      "description": "Muestra la puntuación actual",
+      "url": "./Balloon-Pop.html",
+      "icons": [
+        {
+          "src": "img/assets/Gumdramon.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "screenshots": [
