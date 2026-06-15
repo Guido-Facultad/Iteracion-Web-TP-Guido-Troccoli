@@ -1,6 +1,6 @@
 {
-    "orientation": "portrait",
-    "id": "com.usuario.balloonpop",
+  "orientation": "portrait",
+  "id": "com.usuario.balloonpop",
   "name": "Balloon Pop! - Grandes Videojuegos",
   "short_name": "BalloonPop",
   "categories": ["games","puzzle"],
