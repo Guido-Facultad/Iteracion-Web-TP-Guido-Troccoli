@@ -2,8 +2,10 @@
     "orientation": "portrait",
   "name": "Balloon Pop! - Grandes Videojuegos",
   "short_name": "BalloonPop",
+  "description": "A casual balloon popping game inspired by classic video games.",
   "start_url": "./Balloon-Pop.html",
   "display": "standalone",
+  "display_override": ["window-controls-overlay"],
   "scope": "./",
   "background_color": "#000000",
   "theme_color": "#000000",
@@ -17,6 +19,27 @@
       "src": "img/assets/Gumdramon.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "img/screenshots/screen1.png",
+      "sizes": "640x480",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Play Balloon Pop",
+      "short_name": "Play",
+      "description": "Start the balloon popping game.",
+      "url": "./Balloon-Pop.html"
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+balloon",
+      "url": "./Balloon-Pop.html?source=%s"
     }
   ]
 }
