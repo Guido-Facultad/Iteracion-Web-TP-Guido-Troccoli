@@ -32,6 +32,32 @@ let livesText;
 let timeText;
 let balloonTypes = ['red', 'yellow', 'blue', 'green'];
 
+let motionControlsEnabled = false;
+let motionPermissionGranted = false;
+let currentMotionDirection = 'none';
+let lastMotionAction = null;
+let activeMotionVelocity = { x: 0, y: 0 };
+
+const MOTION_ACTION_OPTIONS = [
+    { value: 'none', label: 'Ninguno' },
+    { value: 'move_left', label: 'Mover Izquierda' },
+    { value: 'move_right', label: 'Mover Derecha' },
+    { value: 'move_up', label: 'Mover Arriba' },
+    { value: 'move_down', label: 'Mover Abajo' },
+    { value: 'start_game', label: 'Iniciar Juego' },
+    { value: 'restart_game', label: 'Reiniciar Juego' },
+    { value: 'finish_game', label: 'Finalizar Partida' }
+];
+
+const DEFAULT_MOTION_MAPPINGS = {
+    left: 'move_left',
+    right: 'move_right',
+    up: 'move_up',
+    down: 'move_down'
+};
+
+const motionControlMappings = { ...DEFAULT_MOTION_MAPPINGS };
+
 const EVENT_SERVER_URL = null; // No remote event endpoint on GitHub Pages
 const EVENT_HISTORY_KEY = 'gameEventHistory';
 const EVENT_COUNTS_KEY = 'gameEventCounts';
@@ -370,6 +396,8 @@ window.addEventListener('load', () => {
     loadEventStore();
     console.log('Eventos acumulados cargados:', eventCounts);
 
+    initializeMotionControls();
+
     const savedEvents = localStorage.getItem('pendingGameEvents');
     if (savedEvents) {
         try {
@@ -383,6 +411,196 @@ window.addEventListener('load', () => {
 
     connectWebSocket();
 });
+
+function initializeMotionControls() {
+    const directions = ['left', 'right', 'up', 'down'];
+    directions.forEach((direction) => {
+        const select = document.getElementById(`motion-${direction}`);
+        if (!select) return;
+        select.innerHTML = '';
+        MOTION_ACTION_OPTIONS.forEach((option) => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.label;
+            if (option.value === DEFAULT_MOTION_MAPPINGS[direction]) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', () => {
+            motionControlMappings[direction] = select.value;
+        });
+        motionControlMappings[direction] = select.value;
+    });
+
+    const enableCheckbox = document.getElementById('motion-enable');
+    if (enableCheckbox) {
+        enableCheckbox.checked = false;
+        enableCheckbox.addEventListener('change', updateMotionEnable);
+    }
+
+    const permissionButton = document.getElementById('motion-permission');
+    if (permissionButton) {
+        permissionButton.addEventListener('click', requestGyroscopePermission);
+    }
+
+    const resetButton = document.getElementById('motion-reset');
+    if (resetButton) {
+        resetButton.addEventListener('click', resetMotionMappings);
+    }
+}
+
+function updateMotionEnable() {
+    motionControlsEnabled = document.getElementById('motion-enable')?.checked === true;
+    if (motionControlsEnabled) {
+        startMotionListener();
+    } else {
+        stopMotionListener();
+        currentMotionDirection = 'none';
+        activeMotionVelocity = { x: 0, y: 0 };
+    }
+}
+
+function startMotionListener() {
+    if (!('DeviceOrientationEvent' in window)) {
+        alert('Este navegador no soporta controles de orientación. Usa un navegador móvil compatible o el emulador de sensores.');
+        return;
+    }
+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function' && !motionPermissionGranted) {
+        alert('Presiona "Solicitar permiso del giroscopio" antes de habilitar los controles por movimiento.');
+        document.getElementById('motion-enable').checked = false;
+        motionControlsEnabled = false;
+        return;
+    }
+
+    window.addEventListener('deviceorientation', handleDeviceOrientation);
+    window.addEventListener('devicemotion', handleDeviceMotion);
+    logGameEvent('motion_controls_enabled', { motionPermissionGranted });
+}
+
+function stopMotionListener() {
+    window.removeEventListener('deviceorientation', handleDeviceOrientation);
+    window.removeEventListener('devicemotion', handleDeviceMotion);
+    logGameEvent('motion_controls_disabled', {});
+}
+
+function requestGyroscopePermission() {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+            .then((permissionState) => {
+                if (permissionState === 'granted') {
+                    motionPermissionGranted = true;
+                    logGameEvent('gyroscope_permission_granted', {});
+                    if (document.getElementById('motion-enable')?.checked) {
+                        startMotionListener();
+                    }
+                    alert('Permiso de giroscopio otorgado. Ahora habilita los controles por movimiento si deseas usarlos.');
+                } else {
+                    logGameEvent('gyroscope_permission_denied', { permissionState });
+                    alert('Permiso de giroscopio denegado. No se podrán usar los controles por movimiento.');
+                }
+            })
+            .catch((error) => {
+                motionPermissionGranted = false;
+                console.warn('Error solicitando permiso de giroscopio:', error);
+                alert('No se pudo solicitar permiso al giroscopio: ' + error.message);
+            });
+    } else {
+        motionPermissionGranted = true;
+        logGameEvent('gyroscope_permission_not_required', {});
+        alert('Tu navegador no requiere permiso explícito para acceder al giroscopio. Activa los controles por movimiento y prueba la inclinación.');
+    }
+}
+
+function handleDeviceOrientation(event) {
+    if (!motionControlsEnabled) return;
+    const beta = event.beta;
+    const gamma = event.gamma;
+    if (typeof beta !== 'number' || typeof gamma !== 'number') return;
+
+    const threshold = 15;
+    let direction = 'none';
+
+    if (gamma <= -threshold) {
+        direction = 'left';
+    } else if (gamma >= threshold) {
+        direction = 'right';
+    } else if (beta <= -threshold) {
+        direction = 'up';
+    } else if (beta >= threshold) {
+        direction = 'down';
+    }
+
+    if (direction === currentMotionDirection) {
+        updateMotionVelocityForDirection(direction);
+        return;
+    }
+
+    currentMotionDirection = direction;
+    lastMotionAction = null;
+    updateMotionVelocityForDirection(direction);
+}
+
+function handleDeviceMotion(event) {
+    if (!motionControlsEnabled) return;
+    const acceleration = event.accelerationIncludingGravity;
+    if (!acceleration) return;
+    const total = Math.abs(acceleration.x || 0) + Math.abs(acceleration.y || 0) + Math.abs(acceleration.z || 0);
+    if (total > 30) {
+        logGameEvent('device_shake_detected', { total });
+    }
+}
+
+function updateMotionVelocityForDirection(direction) {
+    const action = direction === 'none' ? 'none' : motionControlMappings[direction];
+    if (direction === 'none') {
+        activeMotionVelocity = { x: 0, y: 0 };
+        return;
+    }
+
+    if (action === 'move_left') {
+        activeMotionVelocity = { x: -300, y: 0 };
+    } else if (action === 'move_right') {
+        activeMotionVelocity = { x: 300, y: 0 };
+    } else if (action === 'move_up') {
+        activeMotionVelocity = { x: 0, y: -300 };
+    } else if (action === 'move_down') {
+        activeMotionVelocity = { x: 0, y: 300 };
+    } else {
+        activeMotionVelocity = { x: 0, y: 0 };
+        if (action && action !== 'none' && action !== lastMotionAction) {
+            performMotionAction(action);
+            lastMotionAction = action;
+        }
+    }
+
+    if (action && action.startsWith('move_')) {
+        logGameEvent('motion_control_movement', { direction, action });
+    }
+}
+
+function performMotionAction(action) {
+    if (action === 'start_game') {
+        document.getElementById('iniciar')?.click();
+    } else if (action === 'restart_game') {
+        document.getElementById('reiniciar')?.click();
+    } else if (action === 'finish_game') {
+        document.getElementById('finalizar')?.click();
+    }
+}
+
+function resetMotionMappings() {
+    Object.assign(motionControlMappings, DEFAULT_MOTION_MAPPINGS);
+    ['left', 'right', 'up', 'down'].forEach((direction) => {
+        const select = document.getElementById(`motion-${direction}`);
+        if (select) {
+            select.value = DEFAULT_MOTION_MAPPINGS[direction];
+        }
+    });
+    logGameEvent('motion_control_mappings_reset', {});
+}
+
 
 // Precarga de recursos
 function preload() {
@@ -469,22 +687,28 @@ function create() {
 function update() {
     if (gameOver) return;
 
-    // Movimiento del jugador
+    let velocityX = 0;
+    let velocityY = 0;
+
+    if (motionControlsEnabled) {
+        velocityX = activeMotionVelocity.x;
+        velocityY = activeMotionVelocity.y;
+    }
+
     if (cursors.left.isDown) {
-        player.setVelocityX(-300);
+        velocityX = -300;
     } else if (cursors.right.isDown) {
-        player.setVelocityX(300);
-    } else {
-        player.setVelocityX(0);
+        velocityX = 300;
     }
 
     if (cursors.up.isDown) {
-        player.setVelocityY(-300);
+        velocityY = -300;
     } else if (cursors.down.isDown) {
-        player.setVelocityY(300);
-    } else {
-        player.setVelocityY(0);
+        velocityY = 300;
     }
+
+    player.setVelocityX(velocityX);
+    player.setVelocityY(velocityY);
 
     // Verificar globos que tocan el suelo
     balloons.getChildren().forEach(balloon => {

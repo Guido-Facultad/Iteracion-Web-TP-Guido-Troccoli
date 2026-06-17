@@ -56,6 +56,35 @@
         </div>
 
         <div class="seccion">
+            <h2>Controles por Movimiento</h2>
+            <p>Activa el giroscopio en tu móvil o en el emulador del navegador. Selecciona qué acción debe ejecutarse al inclinar el dispositivo.</p>
+            <div class="controles-container">
+                <label><input type="checkbox" id="motion-enable"> Habilitar controles por movimiento</label>
+                <button id="motion-permission" class="boton">Solicitar permiso del giroscopio</button>
+                <button id="motion-reset" class="boton">Restaurar configuración por defecto</button>
+            </div>
+            <div class="motion-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;align-items:start;">
+                <div>
+                    <label for="motion-left">Inclinar a la izquierda</label>
+                    <select id="motion-left"></select>
+                </div>
+                <div>
+                    <label for="motion-right">Inclinar a la derecha</label>
+                    <select id="motion-right"></select>
+                </div>
+                <div>
+                    <label for="motion-up">Inclinar hacia adelante</label>
+                    <select id="motion-up"></select>
+                </div>
+                <div>
+                    <label for="motion-down">Inclinar hacia atrás</label>
+                    <select id="motion-down"></select>
+                </div>
+            </div>
+            <p class="nota" style="font-size:0.9rem;margin-top:8px;color:#555;">En Chrome puedes usar DevTools &gt; More tools &gt; Sensors para emular la orientación del dispositivo.</p>
+        </div>
+
+        <div class="seccion">
             <h2>Eventos del Juego</h2>
             <div class="controles-container">
                 <button id="descargar-eventos" class="boton" onclick="downloadEventsJSON()">📥 Descargar Eventos JSON</button>
